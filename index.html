@@ -46,7 +46,33 @@
       background-color: #d9e1f2;
     }
     tr:nth-child(even) {
+      /* Stripe table rows for better readability */
       background-color: #f7f7f7;
+    }
+    /* Styling for the interactive grouped UI */
+    .latest-row {
+      background-color: #eaf2fb;
+      cursor: pointer;
+    }
+    .details-row {
+      background-color: #f7f9fc;
+    }
+    .toggle-icon {
+      cursor: pointer;
+      margin-right: 6px;
+    }
+    .nested-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+    }
+    .nested-table th, .nested-table td {
+      border: 1px solid #ddd;
+      padding: 6px;
+      text-align: left;
+    }
+    .nested-table th {
+      background-color: #f0f5ff;
     }
     .button-row {
       margin-top: 10px;
@@ -156,17 +182,68 @@
     function renderTable() {
       const tbody = document.querySelector('#logTable tbody');
       tbody.innerHTML = '';
-      commLog.forEach((entry, index) => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${entry.date}</td>
-          <td>${entry.person}</td>
-          <td>${entry.category}</td>
-          <td>${entry.reference}</td>
-          <td>${entry.description}</td>
-          <td>${entry.nextSteps}</td>
+      // Group entries by their reference/item so related updates appear together
+      const groups = {};
+      commLog.forEach(entry => {
+        const ref = entry.reference || '';
+        if (!groups[ref]) {
+          groups[ref] = [];
+        }
+        groups[ref].push(entry);
+      });
+      // Sort groups by the date of their latest entry (descending)
+      const sortedGroups = Object.entries(groups).sort((a, b) => {
+        const aLatest = a[1].slice().sort((x, y) => new Date(y.date) - new Date(x.date))[0];
+        const bLatest = b[1].slice().sort((x, y) => new Date(y.date) - new Date(x.date))[0];
+        return new Date(bLatest.date) - new Date(aLatest.date);
+      });
+      sortedGroups.forEach(([ref, entries]) => {
+        // Sort each group’s entries by date descending so the most recent comes first
+        const sortedEntries = entries.slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+        const latest = sortedEntries[0];
+        const previous = sortedEntries.slice(1);
+        // Create the row that always shows the most recent update
+        const trLatest = document.createElement('tr');
+        trLatest.classList.add('latest-row');
+        trLatest.innerHTML = `
+          <td><span class="toggle-icon">${previous.length ? '&#9654;' : ''}</span>${latest.date}</td>
+          <td>${latest.person}</td>
+          <td>${latest.category}</td>
+          <td>${latest.reference}</td>
+          <td>${latest.description}</td>
+          <td>${latest.nextSteps}</td>
         `;
-        tbody.appendChild(row);
+        tbody.appendChild(trLatest);
+        // If there are older updates, create a hidden row to display them
+        if (previous.length) {
+          const trDetail = document.createElement('tr');
+          trDetail.classList.add('details-row');
+          trDetail.style.display = 'none';
+          const td = document.createElement('td');
+          td.colSpan = 6;
+          let nestedHtml = '<table class="nested-table"><thead><tr><th>Date</th><th>Person</th><th>Category</th><th>Reference/Item</th><th>Description / Update</th><th>Next Steps / Action</th></tr></thead><tbody>';
+          previous.forEach(ent => {
+            nestedHtml += `<tr><td>${ent.date}</td><td>${ent.person}</td><td>${ent.category}</td><td>${ent.reference}</td><td>${ent.description}</td><td>${ent.nextSteps}</td></tr>`;
+          });
+          nestedHtml += '</tbody></table>';
+          td.innerHTML = nestedHtml;
+          trDetail.appendChild(td);
+          tbody.appendChild(trDetail);
+          // Toggle the details row when the latest row is clicked
+          trLatest.addEventListener('click', function (e) {
+            // Prevent toggling when clicking inside the nested table
+            if (e.target.closest('.nested-table')) return;
+            if (trDetail.style.display === 'none') {
+              trDetail.style.display = '';
+              const iconSpan = trLatest.querySelector('.toggle-icon');
+              if (iconSpan) iconSpan.innerHTML = '&#9660;';
+            } else {
+              trDetail.style.display = 'none';
+              const iconSpan = trLatest.querySelector('.toggle-icon');
+              if (iconSpan) iconSpan.innerHTML = '&#9654;';
+            }
+          });
+        }
       });
     }
 
