@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Communication Tracker WebApp</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+      line-height: 1.5;
+    }
+    h1 {
+      color: #2f5496;
+    }
+    form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    label {
+      font-weight: bold;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 6px;
+      box-sizing: border-box;
+    }
+    textarea {
+      resize: vertical;
+      height: 60px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background-color: #d9e1f2;
+    }
+    tr:nth-child(even) {
+      background-color: #f7f7f7;
+    }
+    .button-row {
+      margin-top: 10px;
+    }
+    button {
+      padding: 8px 14px;
+      margin-right: 10px;
+      border: none;
+      background-color: #2f5496;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #274778;
+    }
+  </style>
+</head>
+<body>
+  <h1>Communication Tracker</h1>
+  <p>
+    This lightweight web app allows you to maintain a structured log of your
+    communication updates. Use the form below to add new entries. Your data is
+    saved in your browser's local storage so it persists across sessions on the
+    same computer.
+  </p>
+
+  <form id="entryForm">
+    <div>
+      <label for="date">Date</label>
+      <input type="date" id="date" required />
+    </div>
+    <div>
+      <label for="person">Person</label>
+      <input type="text" id="person" placeholder="e.g., JY" required />
+    </div>
+    <div>
+      <label for="category">Category</label>
+      <select id="category" required>
+        <option value="RFQ">RFQ</option>
+        <option value="Quote">Quote</option>
+        <option value="PO">PO</option>
+        <option value="ETA">ETA</option>
+        <option value="Meeting">Meeting</option>
+        <option value="Claim">Claim</option>
+        <option value="Payment">Payment</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+    <div>
+      <label for="reference">Reference/Item</label>
+      <input type="text" id="reference" placeholder="e.g., SP25051301_C" required />
+    </div>
+    <div>
+      <label for="description">Description / Update</label>
+      <textarea id="description" required></textarea>
+    </div>
+    <div>
+      <label for="nextSteps">Next Steps / Action</label>
+      <textarea id="nextSteps" required></textarea>
+    </div>
+    <div class="button-row">
+      <button type="submit">Add Entry</button>
+      <button type="button" id="exportBtn">Export JSON</button>
+      <button type="button" id="importBtn">Import JSON</button>
+      <input type="file" id="fileInput" accept="application/json" style="display: none;" />
+    </div>
+  </form>
+
+  <table id="logTable">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Person</th>
+        <th>Category</th>
+        <th>Reference/Item</th>
+        <th>Description / Update</th>
+        <th>Next Steps / Action</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    // Initialize or load existing log from localStorage
+    let commLog = [];
+
+    function loadLog() {
+      const data = localStorage.getItem('comm_log');
+      if (data) {
+        try {
+          commLog = JSON.parse(data);
+        } catch (e) {
+          console.error('Failed to parse log from localStorage', e);
+          commLog = [];
+        }
+      } else {
+        commLog = [];
+      }
+      renderTable();
+    }
+
+    function saveLog() {
+      localStorage.setItem('comm_log', JSON.stringify(commLog));
+    }
+
+    function renderTable() {
+      const tbody = document.querySelector('#logTable tbody');
+      tbody.innerHTML = '';
+      commLog.forEach((entry, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${entry.date}</td>
+          <td>${entry.person}</td>
+          <td>${entry.category}</td>
+          <td>${entry.reference}</td>
+          <td>${entry.description}</td>
+          <td>${entry.nextSteps}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    document.getElementById('entryForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const entry = {
+        date: document.getElementById('date').value,
+        person: document.getElementById('person').value.trim(),
+        category: document.getElementById('category').value,
+        reference: document.getElementById('reference').value.trim(),
+        description: document.getElementById('description').value.trim(),
+        nextSteps: document.getElementById('nextSteps').value.trim(),
+      };
+      commLog.push(entry);
+      saveLog();
+      renderTable();
+      this.reset();
+    });
+
+    // Export log as JSON file
+    document.getElementById('exportBtn').addEventListener('click', function () {
+      const dataStr = JSON.stringify(commLog, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'communication_log.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
+    // Import log from JSON file
+    document.getElementById('importBtn').addEventListener('click', function () {
+      document.getElementById('fileInput').click();
+    });
+
+    document.getElementById('fileInput').addEventListener('change', function (e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function (ev) {
+        try {
+          const imported = JSON.parse(ev.target.result);
+          if (Array.isArray(imported)) {
+            commLog = imported;
+            saveLog();
+            renderTable();
+            alert('Log imported successfully.');
+          } else {
+            alert('Invalid file format. Expected an array of entries.');
+          }
+        } catch (err) {
+          alert('Error parsing the JSON file.');
+          console.error(err);
+        }
+        document.getElementById('fileInput').value = '';
+      };
+      reader.readAsText(file);
+    });
+
+    // Initialize on load
+    document.addEventListener('DOMContentLoaded', loadLog);
+  </script>
+</body>
+</html>
