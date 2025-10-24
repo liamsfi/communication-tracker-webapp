@@ -84,33 +84,50 @@
     button:hover {
       background-color: #24406e;
     }
-    /* Table styles */
-    table {
-      width: 100%;
-      border-collapse: collapse;
+    /* Post list styles replacing table */
+    .post-list {
       margin-top: 20px;
+    }
+    .post {
+      border: 1px solid #e5e5e5;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 12px;
+      background-color: #fff;
+    }
+    .post-header {
+      display: flex;
+      justify-content: space-between;
       font-size: 0.9em;
-    }
-    th {
-      background-color: #f5f5f5;
-      padding: 10px 8px;
-      text-align: left;
-      font-weight: 600;
-      border-bottom: 1px solid #e5e5e5;
       color: #555;
+      margin-bottom: 4px;
     }
-    td {
-      padding: 8px;
-      vertical-align: top;
-      border-bottom: 1px solid #f0f0f0;
+    .post-header .meta {
+      color: #888;
     }
-    /* Nested reply indentation */
-    td:first-child {
-      /* default indentation handled inline via JS */
+    .post-body {
+      margin-bottom: 8px;
     }
-    /* Hide striped backgrounds for a cleaner look */
-    tr:nth-child(even) {
+    .post-actions {
+      margin-top: 4px;
+    }
+    .post-actions button {
       background-color: transparent;
+      border: none;
+      color: #2f5496;
+      cursor: pointer;
+      font-size: 0.85em;
+      padding: 0;
+    }
+    .post-actions button:hover {
+      text-decoration: underline;
+    }
+    .reply-form {
+      margin-top: 8px;
+    }
+    .reply-form button {
+      margin-right: 8px;
+      margin-top: 4px;
     }
     /* Reply form styling */
     .reply-input {
@@ -173,17 +190,8 @@
   </form>
 
 
-  <table id="logTable">
-    <thead>
-      <tr>
-        <th>Date</th>
-        <th>User</th>
-        <th>Category</th>
-        <th>Description / Update</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+  <!-- Container for posts list -->
+  <div id="logList" class="post-list"></div>
 
   <!-- User management section for adding new users -->
   <h2>User Management</h2>
@@ -257,7 +265,7 @@
       }
       // Ensure each entry has an id and responses array for nested replies
       commLog.forEach(entry => ensureEntryShape(entry));
-      renderTable();
+      renderPosts();
     }
 
     function saveLog() {
@@ -285,53 +293,88 @@
       entry.responses.forEach(child => ensureEntryShape(child));
     }
 
-    function renderTable() {
-      const tbody = document.querySelector('#logTable tbody');
-      tbody.innerHTML = '';
-      // Sort top-level entries by date descending
+    // Render posts list in a Reddit-style feed with nested replies
+    function renderPosts() {
+      const container = document.getElementById('logList');
+      if (!container) return;
+      container.innerHTML = '';
       const sortedEntries = commLog.slice().sort((a, b) => new Date(b.date) - new Date(a.date));
       sortedEntries.forEach(entry => {
-        renderEntry(entry, 0, tbody);
+        renderPost(entry, 0, container);
       });
     }
 
-    /**
-     * Recursively render an entry and its nested responses into the table body.
-     * @param {Object} entry - The entry to render
-     * @param {number} level - Nesting level (0 for top-level entries)
-     * @param {HTMLElement} tbody - Table body element
-     */
-    function renderEntry(entry, level, tbody) {
-      // Ensure the entry has a responses array
-      if (!entry.responses) entry.responses = [];
-      // Create a row for this entry
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td style="padding-left: ${level * 20}px">${entry.date}</td>
-        <td>${entry.person}</td>
-        <td>${entry.category}</td>
-        <td>${entry.description}<br>
-          <button data-action="reply" data-id="${entry.id}">Reply</button>
-        </td>
-      `;
-      tbody.appendChild(tr);
-      // Create a hidden row for the reply form
-      const replyRow = document.createElement('tr');
-      replyRow.style.display = 'none';
-      replyRow.dataset.parentId = entry.id;
-      replyRow.innerHTML = `
-        <td colspan="4" style="padding-left: ${level * 20 + 20}px">
-          <div contenteditable="true" class="reply-input" style="border:1px solid #ccc; padding:6px; min-height:40px;"></div>
-          <button data-action="save-reply" data-parent-id="${entry.id}">Save</button>
-          <button data-action="cancel-reply" data-parent-id="${entry.id}">Cancel</button>
-        </td>
-      `;
-      tbody.appendChild(replyRow);
-      // Recursively render nested responses with increased indentation
+    function renderPost(entry, level, container) {
+      if (!Array.isArray(entry.responses)) {
+        entry.responses = [];
+      }
+      const postDiv = document.createElement('div');
+      postDiv.className = 'post';
+      postDiv.style.marginLeft = (level * 20) + 'px';
+      postDiv.dataset.id = entry.id;
+      // Apply Reddit‑style visual cues for nested replies: alternate background shades
+      // and a subtle left border to connect comment threads. Deeper levels cycle
+      // through a palette of light neutral colors to aid visual separation.
+      const shades = ['#ffffff', '#fafafa', '#f5f5f5', '#f0f0f0'];
+      postDiv.style.backgroundColor = shades[level % shades.length];
+      if (level > 0) {
+        postDiv.style.borderLeft = '3px solid #e0e0e0';
+        postDiv.style.paddingLeft = '12px';
+      }
+      const headerDiv = document.createElement('div');
+      headerDiv.className = 'post-header';
+      const leftSpan = document.createElement('span');
+      leftSpan.textContent = `${entry.person} - ${entry.category}`;
+      const rightSpan = document.createElement('span');
+      rightSpan.className = 'meta';
+      rightSpan.textContent = entry.date;
+      headerDiv.appendChild(leftSpan);
+      headerDiv.appendChild(rightSpan);
+      postDiv.appendChild(headerDiv);
+      const bodyDiv = document.createElement('div');
+      bodyDiv.className = 'post-body';
+      bodyDiv.innerHTML = entry.description;
+      postDiv.appendChild(bodyDiv);
+      const actionsDiv = document.createElement('div');
+      actionsDiv.className = 'post-actions';
+      const replyBtn = document.createElement('button');
+      replyBtn.setAttribute('data-action', 'reply');
+      replyBtn.setAttribute('data-id', entry.id);
+      replyBtn.textContent = 'Reply';
+      actionsDiv.appendChild(replyBtn);
+      postDiv.appendChild(actionsDiv);
+      const replyForm = document.createElement('div');
+      replyForm.className = 'reply-form';
+      replyForm.style.display = 'none';
+      replyForm.setAttribute('data-parent-id', entry.id);
+      const replyInput = document.createElement('div');
+      replyInput.setAttribute('contenteditable', 'true');
+      replyInput.className = 'reply-input';
+      replyInput.style.border = '1px solid #ddd';
+      replyInput.style.borderRadius = '4px';
+      replyInput.style.padding = '6px';
+      replyInput.style.minHeight = '40px';
+      replyInput.style.backgroundColor = '#fff';
+      replyInput.style.color = '#333';
+      replyForm.appendChild(replyInput);
+      const saveBtn = document.createElement('button');
+      saveBtn.setAttribute('data-action', 'save-reply');
+      saveBtn.setAttribute('data-parent-id', entry.id);
+      saveBtn.textContent = 'Save';
+      const cancelBtn = document.createElement('button');
+      cancelBtn.setAttribute('data-action', 'cancel-reply');
+      cancelBtn.setAttribute('data-parent-id', entry.id);
+      cancelBtn.textContent = 'Cancel';
+      replyForm.appendChild(saveBtn);
+      replyForm.appendChild(cancelBtn);
+      postDiv.appendChild(replyForm);
+      container.appendChild(postDiv);
       entry.responses.forEach(child => {
-        renderEntry(child, level + 1, tbody);
+        renderPost(child, level + 1, container);
       });
     }
+
+
 
     /**
      * Recursively find an entry or response by its id within a list of entries.
@@ -376,7 +419,7 @@
       };
       commLog.push(entry);
       saveLog();
-      renderTable();
+      renderPosts();
       this.reset();
       // After resetting the form, set the date field to today again
       const dateAfterReset = document.getElementById('date');
@@ -456,35 +499,31 @@
         });
       }
 
-      // Set up reply handling on the log table. Use event delegation to handle
+      // Set up reply handling on the post list. Use event delegation to handle
       // Reply, Save and Cancel actions for both entries and nested responses.
-      const tbodyEl = document.querySelector('#logTable tbody');
-      if (tbodyEl) {
-        tbodyEl.addEventListener('click', function (event) {
+      const postListEl = document.getElementById('logList');
+      if (postListEl) {
+        postListEl.addEventListener('click', function (event) {
           const action = event.target.dataset.action;
           if (!action) return;
-          // Reply button toggles the reply row for the associated entry
           if (action === 'reply') {
             const id = event.target.dataset.id;
-            const replyRow = this.querySelector(`tr[data-parent-id='${id}']`);
-            if (replyRow) {
-              // Toggle visibility
-              replyRow.style.display = replyRow.style.display === 'none' ? '' : 'none';
-              // Focus the input when showing
-              if (replyRow.style.display === '') {
-                const input = replyRow.querySelector('.reply-input');
-                if (input) input.focus();
-              } else {
-                // Clear the input when hiding
-                const input = replyRow.querySelector('.reply-input');
-                if (input) input.innerHTML = '';
+            const replyForm = this.querySelector(`.reply-form[data-parent-id='${id}']`);
+            if (replyForm) {
+              const isHidden = replyForm.style.display === 'none' || replyForm.style.display === '';
+              replyForm.style.display = isHidden ? '' : 'none';
+              const input = replyForm.querySelector('.reply-input');
+              if (replyForm.style.display === '' && input) {
+                input.focus();
+              } else if (input) {
+                input.innerHTML = '';
               }
             }
           } else if (action === 'save-reply') {
             const parentId = event.target.dataset.parentId;
-            const replyRow = this.querySelector(`tr[data-parent-id='${parentId}']`);
-            if (!replyRow) return;
-            const input = replyRow.querySelector('.reply-input');
+            const replyForm = this.querySelector(`.reply-form[data-parent-id='${parentId}']`);
+            if (!replyForm) return;
+            const input = replyForm.querySelector('.reply-input');
             const content = input ? input.innerHTML.trim() : '';
             if (!content) {
               alert('Please enter a response.');
@@ -492,7 +531,7 @@
             }
             const userVal = document.getElementById('user').value;
             const parentEntry = findEntryById(commLog, parentId);
-            let category = parentEntry ? parentEntry.category : 'Response';
+            const category = parentEntry ? parentEntry.category : 'Response';
             const newResponse = {
               id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
               date: new Date().toISOString().split('T')[0],
@@ -506,13 +545,13 @@
               parentEntry.responses.push(newResponse);
             }
             saveLog();
-            renderTable();
+            renderPosts();
           } else if (action === 'cancel-reply') {
             const parentId = event.target.dataset.parentId;
-            const replyRow = this.querySelector(`tr[data-parent-id='${parentId}']`);
-            if (!replyRow) return;
-            replyRow.style.display = 'none';
-            const input = replyRow.querySelector('.reply-input');
+            const replyForm = this.querySelector(`.reply-form[data-parent-id='${parentId}']`);
+            if (!replyForm) return;
+            replyForm.style.display = 'none';
+            const input = replyForm.querySelector('.reply-input');
             if (input) input.innerHTML = '';
           }
         });
