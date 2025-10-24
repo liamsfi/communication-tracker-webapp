@@ -34,11 +34,11 @@
     }
     /* Form layout */
     form {
-      /* Use a grid layout for the entry form so all inputs align neatly. Each
-         input (User, Category, Description) occupies an equal fraction of the
-         available width and the Add Entry button sizes to its content. */
+      /* Use a 4‑column grid so User, Category, Description and the button
+         occupy equal widths. This ensures the entry fields and Add Entry
+         button align perfectly and appear the same size. */
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr auto;
+      grid-template-columns: repeat(4, 1fr);
       gap: 12px;
       align-items: flex-end;
       margin-bottom: 20px;
@@ -78,6 +78,8 @@
     /* Buttons */
     .button-row {
       margin-top: 10px;
+      /* Ensure the button fills the full width of its grid cell */
+      width: 100%;
     }
     button {
       padding: 6px 14px;
@@ -87,6 +89,7 @@
       color: #ffffff;
       cursor: pointer;
       font-size: 0.85em;
+      width: 100%;
     }
     button:hover {
       background-color: #333333;
