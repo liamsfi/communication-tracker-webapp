@@ -140,9 +140,6 @@
     </div>
     <div class="button-row">
       <button type="submit">Add Entry</button>
-      <button type="button" id="exportBtn">Export JSON</button>
-      <button type="button" id="importBtn">Import JSON</button>
-      <input type="file" id="fileInput" accept="application/json" style="display: none;" />
     </div>
   </form>
 
@@ -228,6 +225,8 @@
       } else {
         commLog = [];
       }
+      // Ensure each entry has an id and responses array for nested replies
+      commLog.forEach(entry => ensureEntryShape(entry));
       renderTable();
     }
 
@@ -235,70 +234,92 @@
       localStorage.setItem('comm_log', JSON.stringify(commLog));
     }
 
+    /**
+     * Recursively ensure that an entry (and all nested responses) has an id and a responses array.
+     * This is important when loading old logs from localStorage that may not include these fields.
+     */
+    function ensureEntryShape(entry) {
+      // Assign a unique id if missing. Fall back to any existing reference as id for backwards compatibility.
+      if (!entry.id) {
+        entry.id = (entry.reference || Date.now().toString()) + Math.random().toString(36).substr(2, 9);
+      }
+      // Normalize person/user field (older logs may store 'user' instead of 'person')
+      if (!entry.person && entry.user) {
+        entry.person = entry.user;
+      }
+      // Ensure responses array exists
+      if (!Array.isArray(entry.responses)) {
+        entry.responses = [];
+      }
+      // Recursively ensure shape on nested responses
+      entry.responses.forEach(child => ensureEntryShape(child));
+    }
+
     function renderTable() {
       const tbody = document.querySelector('#logTable tbody');
       tbody.innerHTML = '';
-      // Group entries by their reference/item so related updates appear together
-      const groups = {};
-      commLog.forEach(entry => {
-        const ref = entry.reference || '';
-        if (!groups[ref]) {
-          groups[ref] = [];
+      // Sort top-level entries by date descending
+      const sortedEntries = commLog.slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+      sortedEntries.forEach(entry => {
+        renderEntry(entry, 0, tbody);
+      });
+    }
+
+    /**
+     * Recursively render an entry and its nested responses into the table body.
+     * @param {Object} entry - The entry to render
+     * @param {number} level - Nesting level (0 for top-level entries)
+     * @param {HTMLElement} tbody - Table body element
+     */
+    function renderEntry(entry, level, tbody) {
+      // Ensure the entry has a responses array
+      if (!entry.responses) entry.responses = [];
+      // Create a row for this entry
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="padding-left: ${level * 20}px">${entry.date}</td>
+        <td>${entry.person}</td>
+        <td>${entry.category}</td>
+        <td>${entry.description}<br>
+          <button data-action="reply" data-id="${entry.id}">Reply</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+      // Create a hidden row for the reply form
+      const replyRow = document.createElement('tr');
+      replyRow.style.display = 'none';
+      replyRow.dataset.parentId = entry.id;
+      replyRow.innerHTML = `
+        <td colspan="4" style="padding-left: ${level * 20 + 20}px">
+          <div contenteditable="true" class="reply-input" style="border:1px solid #ccc; padding:6px; min-height:40px;"></div>
+          <button data-action="save-reply" data-parent-id="${entry.id}">Save</button>
+          <button data-action="cancel-reply" data-parent-id="${entry.id}">Cancel</button>
+        </td>
+      `;
+      tbody.appendChild(replyRow);
+      // Recursively render nested responses with increased indentation
+      entry.responses.forEach(child => {
+        renderEntry(child, level + 1, tbody);
+      });
+    }
+
+    /**
+     * Recursively find an entry or response by its id within a list of entries.
+     * @param {Array} entries - List of entries to search
+     * @param {string} id - The id of the entry to find
+     * @returns {Object|null} The matching entry or null if not found
+     */
+    function findEntryById(entries, id) {
+      for (const entry of entries) {
+        if (entry.id === id) {
+          return entry;
         }
-        groups[ref].push(entry);
-      });
-      // Sort groups by the date of their latest entry (descending)
-      const sortedGroups = Object.entries(groups).sort((a, b) => {
-        const aLatest = a[1].slice().sort((x, y) => new Date(y.date) - new Date(x.date))[0];
-        const bLatest = b[1].slice().sort((x, y) => new Date(y.date) - new Date(x.date))[0];
-        return new Date(bLatest.date) - new Date(aLatest.date);
-      });
-      sortedGroups.forEach(([ref, entries]) => {
-        // Sort each group’s entries by date descending so the most recent comes first
-        const sortedEntries = entries.slice().sort((a, b) => new Date(b.date) - new Date(a.date));
-        const latest = sortedEntries[0];
-        const previous = sortedEntries.slice(1);
-        // Create the row that always shows the most recent update
-        const trLatest = document.createElement('tr');
-        trLatest.classList.add('latest-row');
-        trLatest.innerHTML = `
-          <td><span class="toggle-icon">${previous.length ? '&#9654;' : ''}</span>${latest.date}</td>
-          <td>${latest.person}</td>
-          <td>${latest.category}</td>
-          <td>${latest.description}</td>
-        `;
-        tbody.appendChild(trLatest);
-        // If there are older updates, create a hidden row to display them
-        if (previous.length) {
-          const trDetail = document.createElement('tr');
-          trDetail.classList.add('details-row');
-          trDetail.style.display = 'none';
-          const td = document.createElement('td');
-          td.colSpan = 4;
-          let nestedHtml = '<table class="nested-table"><thead><tr><th>Date</th><th>User</th><th>Category</th><th>Description / Update</th></tr></thead><tbody>';
-          previous.forEach(ent => {
-            nestedHtml += `<tr><td>${ent.date}</td><td>${ent.person}</td><td>${ent.category}</td><td>${ent.description}</td></tr>`;
-          });
-          nestedHtml += '</tbody></table>';
-          td.innerHTML = nestedHtml;
-          trDetail.appendChild(td);
-          tbody.appendChild(trDetail);
-          // Toggle the details row when the latest row is clicked
-          trLatest.addEventListener('click', function (e) {
-            // Prevent toggling when clicking inside the nested table
-            if (e.target.closest('.nested-table')) return;
-            if (trDetail.style.display === 'none') {
-              trDetail.style.display = '';
-              const iconSpan = trLatest.querySelector('.toggle-icon');
-              if (iconSpan) iconSpan.innerHTML = '&#9660;';
-            } else {
-              trDetail.style.display = 'none';
-              const iconSpan = trLatest.querySelector('.toggle-icon');
-              if (iconSpan) iconSpan.innerHTML = '&#9654;';
-            }
-          });
+        if (entry.responses && entry.responses.length) {
+          const found = findEntryById(entry.responses, id);
+          if (found) return found;
         }
-      });
+      }
+      return null;
     }
 
     document.getElementById('entryForm').addEventListener('submit', function (e) {
@@ -316,12 +337,12 @@
         date: document.getElementById('date').value,
         person: userVal,
         category: document.getElementById('category').value,
-        // Generate a unique reference ID for grouping; not shown to the user
-        reference: Date.now().toString(),
+        // Unique identifier for this entry
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
         // Capture HTML from the contenteditable description field
         description: document.getElementById('description').innerHTML.trim(),
-        // Next steps field removed; store as empty string for backwards compatibility
-        nextSteps: '',
+        // Array to hold nested responses
+        responses: []
       };
       commLog.push(entry);
       saveLog();
@@ -341,48 +362,6 @@
       renderUserOptions();
     });
 
-    // Export log as JSON file
-    document.getElementById('exportBtn').addEventListener('click', function () {
-      const dataStr = JSON.stringify(commLog, null, 2);
-      const blob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'communication_log.json';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    });
-
-    // Import log from JSON file
-    document.getElementById('importBtn').addEventListener('click', function () {
-      document.getElementById('fileInput').click();
-    });
-
-    document.getElementById('fileInput').addEventListener('change', function (e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function (ev) {
-        try {
-          const imported = JSON.parse(ev.target.result);
-          if (Array.isArray(imported)) {
-            commLog = imported;
-            saveLog();
-            renderTable();
-            alert('Log imported successfully.');
-          } else {
-            alert('Invalid file format. Expected an array of entries.');
-          }
-        } catch (err) {
-          alert('Error parsing the JSON file.');
-          console.error(err);
-        }
-        document.getElementById('fileInput').value = '';
-      };
-      reader.readAsText(file);
-    });
 
     // Initialize on load and set up paste handler for bulk import
     document.addEventListener('DOMContentLoaded', function () {
@@ -443,6 +422,68 @@
             descriptionDiv.innerHTML = htmlData;
           } else {
             descriptionDiv.textContent = textData;
+          }
+        });
+      }
+
+      // Set up reply handling on the log table. Use event delegation to handle
+      // Reply, Save and Cancel actions for both entries and nested responses.
+      const tbodyEl = document.querySelector('#logTable tbody');
+      if (tbodyEl) {
+        tbodyEl.addEventListener('click', function (event) {
+          const action = event.target.dataset.action;
+          if (!action) return;
+          // Reply button toggles the reply row for the associated entry
+          if (action === 'reply') {
+            const id = event.target.dataset.id;
+            const replyRow = this.querySelector(`tr[data-parent-id='${id}']`);
+            if (replyRow) {
+              // Toggle visibility
+              replyRow.style.display = replyRow.style.display === 'none' ? '' : 'none';
+              // Focus the input when showing
+              if (replyRow.style.display === '') {
+                const input = replyRow.querySelector('.reply-input');
+                if (input) input.focus();
+              } else {
+                // Clear the input when hiding
+                const input = replyRow.querySelector('.reply-input');
+                if (input) input.innerHTML = '';
+              }
+            }
+          } else if (action === 'save-reply') {
+            const parentId = event.target.dataset.parentId;
+            const replyRow = this.querySelector(`tr[data-parent-id='${parentId}']`);
+            if (!replyRow) return;
+            const input = replyRow.querySelector('.reply-input');
+            const content = input ? input.innerHTML.trim() : '';
+            if (!content) {
+              alert('Please enter a response.');
+              return;
+            }
+            const userVal = document.getElementById('user').value;
+            const parentEntry = findEntryById(commLog, parentId);
+            let category = parentEntry ? parentEntry.category : 'Response';
+            const newResponse = {
+              id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+              date: new Date().toISOString().split('T')[0],
+              person: userVal,
+              category: category,
+              description: content,
+              responses: []
+            };
+            if (parentEntry) {
+              if (!Array.isArray(parentEntry.responses)) parentEntry.responses = [];
+              parentEntry.responses.push(newResponse);
+            }
+            saveLog();
+            renderTable();
+          } else if (action === 'cancel-reply') {
+            const parentId = event.target.dataset.parentId;
+            const replyRow = this.querySelector(`tr[data-parent-id='${parentId}']`);
+            if (!replyRow) return;
+            replyRow.style.display = 'none';
+            const input = replyRow.querySelector('.reply-input');
+            if (input) input.innerHTML = '';
           }
         });
       }
