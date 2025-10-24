@@ -14,9 +14,11 @@
       padding: 20px;
       line-height: 1.5;
     }
-    /* Container to center content and add subtle shadow */
+    /* Container to center content and add subtle shadow. Increase max width
+       to provide a larger working area on wide screens. */
     .container {
-      max-width: 800px;
+      width: 90%;
+      max-width: 1000px;
       margin: 0 auto;
       background-color: #ffffff;
       padding: 20px 24px;
@@ -99,7 +101,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 0.9em;
+      font-size: 0.85em;
       color: #555;
       margin-bottom: 4px;
       gap: 8px;
@@ -129,6 +131,21 @@
     }
     .post-body {
       margin-bottom: 8px;
+      /* Smaller font size for update text so the box can be thinner */
+      font-size: 0.85em;
+      line-height: 1.4;
+    }
+
+    /* Styles for condensed previews shown when replies are collapsed */
+    .original-preview,
+    .reply-preview {
+      font-size: 0.85em;
+      line-height: 1.4;
+      margin-bottom: 4px;
+    }
+    .reply-preview em {
+      font-style: italic;
+      color: #666;
     }
     .post-actions {
       margin-top: 4px;
@@ -327,6 +344,10 @@
       container.innerHTML = '';
       const sortedEntries = commLog.slice().sort((a, b) => new Date(b.date) - new Date(a.date));
       sortedEntries.forEach(entry => {
+        // Default to collapsed state on initial render if not previously set
+        if (collapsedState[entry.id] === undefined) {
+          collapsedState[entry.id] = true;
+        }
         renderPost(entry, 0, container);
       });
     }
@@ -384,7 +405,39 @@
       postDiv.appendChild(headerDiv);
       const bodyDiv = document.createElement('div');
       bodyDiv.className = 'post-body';
-      bodyDiv.innerHTML = entry.description;
+      // If this is a top-level post and it is currently collapsed, show a condensed
+      // preview of the original message and the latest reply instead of the full
+      // conversation. Otherwise, display the full description.
+      const isTopLevel = level === 0;
+      const isCollapsed = collapsedState[entry.id];
+      if (isTopLevel && isCollapsed) {
+        // Helper to strip HTML tags to plain text for preview
+        const stripHtml = function (html) {
+          const tmp = document.createElement('div');
+          tmp.innerHTML = html;
+          return (tmp.textContent || tmp.innerText || '').trim();
+        };
+        const originalText = stripHtml(entry.description);
+        // Trim the original message for preview (around 80 chars)
+        const trimmedOriginal = originalText.length > 80 ? originalText.slice(0, 80) + '…' : originalText;
+        // Build preview HTML
+        let previewHtml = '';
+        if (trimmedOriginal) {
+          previewHtml += `<div class="original-preview">${trimmedOriginal}</div>`;
+        }
+        // Show the most recent reply preview if available
+        if (entry.responses && entry.responses.length > 0) {
+          // Get the last response in the immediate responses array (not deeply nested)
+          const lastResponse = entry.responses[entry.responses.length - 1];
+          const replyText = stripHtml(lastResponse.description);
+          const trimmedReply = replyText.length > 100 ? replyText.slice(0, 100) + '…' : replyText;
+          previewHtml += `<div class="reply-preview"><em>Latest update:</em> ${trimmedReply}</div>`;
+        }
+        bodyDiv.innerHTML = previewHtml;
+      } else {
+        // Full description for non-collapsed or nested posts
+        bodyDiv.innerHTML = entry.description;
+      }
       postDiv.appendChild(bodyDiv);
       // Reply form for this entry (hidden by default)
       const replyForm = document.createElement('div');
