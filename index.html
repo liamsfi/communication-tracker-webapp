@@ -115,14 +115,9 @@
       <input type="date" id="date" required />
     </div>
     <div>
-      <label for="person">Person</label>
-      <!-- Dropdown for selecting a person -->
-      <select id="person" required></select>
-    </div>
-    <!-- Container for adding a new person; hidden unless user selects "Add new person…" -->
-    <div id="newPersonContainer" style="display: none;">
-      <label for="newPerson">New Person</label>
-      <input type="text" id="newPerson" placeholder="Enter new person's name" />
+      <label for="user">User</label>
+      <!-- Dropdown for selecting a user -->
+      <select id="user" required></select>
     </div>
     <div>
       <label for="category">Category</label>
@@ -160,7 +155,7 @@
   <!-- Bulk import section -->
   <h2>Bulk Import from Excel</h2>
   <p>
-    Copy rows from your Excel spreadsheet containing columns in the order: Date, Person, Category,
+    Copy rows from your Excel spreadsheet containing columns in the order: Date, User, Category,
     Reference/Item, Description/Update, Next Steps/Action. Then click inside the area below and
     paste your table (Ctrl+V or Command+V). The table will appear with its formatting, and the
     data will be added to the log automatically. Header rows (with column names) are skipped.
@@ -171,7 +166,7 @@
     <thead>
       <tr>
         <th>Date</th>
-        <th>Person</th>
+        <th>User</th>
         <th>Category</th>
         <th>Reference/Item</th>
         <th>Description / Update</th>
@@ -181,48 +176,57 @@
     <tbody></tbody>
   </table>
 
+  <!-- User management section for adding new users -->
+  <h2>User Management</h2>
+  <p>Use this section to add new user initials to the list without creating an entry.</p>
+  <button type="button" id="showAddUserBtn">Add New User</button>
+  <div id="addUserSection" style="display: none; margin-top: 10px;">
+    <label for="newUser">User Initials</label>
+    <input type="text" id="newUser" placeholder="e.g., LG" />
+    <button type="button" id="addUserBtn">Add</button>
+  </div>
+
   <script>
     // Initialize or load existing log from localStorage
     let commLog = [];
 
-    // Manage list of people for the person dropdown
-    let persons = [];
-    function loadPersons() {
-      const data = localStorage.getItem('persons');
+    // Manage list of users for the user dropdown
+    let users = [];
+    function loadUsers() {
+      // Prefer 'users' key but fall back to 'persons' for backward compatibility
+      let data = localStorage.getItem('users');
+      if (!data) {
+        data = localStorage.getItem('persons');
+      }
       if (data) {
         try {
-          persons = JSON.parse(data);
+          users = JSON.parse(data);
         } catch (e) {
-          persons = [];
+          users = [];
         }
       }
-      // If no persons stored or list is empty, use default names
-      if (!Array.isArray(persons) || persons.length === 0) {
-        persons = ['LG', 'MJ', 'TW', 'JY'];
+      // If no users stored or list is empty, use default initials
+      if (!Array.isArray(users) || users.length === 0) {
+        users = ['LG', 'MJ', 'TW', 'JY'];
       }
-      renderPersonOptions();
+      renderUserOptions();
     }
-    function savePersons() {
-      localStorage.setItem('persons', JSON.stringify(persons));
+    function saveUsers() {
+      localStorage.setItem('users', JSON.stringify(users));
     }
-    function renderPersonOptions() {
-      const select = document.getElementById('person');
+    function renderUserOptions() {
+      const select = document.getElementById('user');
       if (!select) return;
       const current = select.value;
       select.innerHTML = '';
-      persons.forEach(p => {
+      users.forEach(u => {
         const opt = document.createElement('option');
-        opt.value = p;
-        opt.textContent = p;
+        opt.value = u;
+        opt.textContent = u;
         select.appendChild(opt);
       });
-      // Add option to allow user to add a new person
-      const otherOpt = document.createElement('option');
-      otherOpt.value = '__other__';
-      otherOpt.textContent = 'Add new person…';
-      select.appendChild(otherOpt);
       // Restore selection if it still exists in the list
-      if (current && persons.includes(current)) {
+      if (current && users.includes(current)) {
         select.value = current;
       } else {
         select.value = '';
@@ -290,7 +294,7 @@
           trDetail.style.display = 'none';
           const td = document.createElement('td');
           td.colSpan = 6;
-          let nestedHtml = '<table class="nested-table"><thead><tr><th>Date</th><th>Person</th><th>Category</th><th>Reference/Item</th><th>Description / Update</th><th>Next Steps / Action</th></tr></thead><tbody>';
+          let nestedHtml = '<table class="nested-table"><thead><tr><th>Date</th><th>User</th><th>Category</th><th>Reference/Item</th><th>Description / Update</th><th>Next Steps / Action</th></tr></thead><tbody>';
           previous.forEach(ent => {
             nestedHtml += `<tr><td>${ent.date}</td><td>${ent.person}</td><td>${ent.category}</td><td>${ent.reference}</td><td>${ent.description}</td><td>${ent.nextSteps}</td></tr>`;
           });
@@ -318,22 +322,12 @@
 
     document.getElementById('entryForm').addEventListener('submit', function (e) {
       e.preventDefault();
-      // Determine the person: existing from dropdown or newly entered
-      const personSelect = document.getElementById('person');
-      let personVal = personSelect.value;
-      if (personVal === '__other__') {
-        personVal = document.getElementById('newPerson').value.trim();
-        // If a new name was entered, add it to the list and persist
-        if (personVal) {
-          if (!persons.includes(personVal)) {
-            persons.push(personVal);
-            savePersons();
-          }
-        }
-      }
+      // Determine the selected user from the dropdown
+      const userSelect = document.getElementById('user');
+      let userVal = userSelect.value;
       const entry = {
         date: document.getElementById('date').value,
-        person: personVal,
+        person: userVal,
         category: document.getElementById('category').value,
         reference: document.getElementById('reference').value.trim(),
         description: document.getElementById('description').value.trim(),
@@ -343,13 +337,8 @@
       saveLog();
       renderTable();
       this.reset();
-      // Hide new person input and reset its required attribute
-      const newPersonContainer = document.getElementById('newPersonContainer');
-      const newPersonInput = document.getElementById('newPerson');
-      if (newPersonContainer) newPersonContainer.style.display = 'none';
-      if (newPersonInput) newPersonInput.required = false;
-      // Re-render person options in case a new one was added
-      renderPersonOptions();
+      // Re-render user options in case a new user was added elsewhere
+      renderUserOptions();
     });
 
     // Export log as JSON file
@@ -397,22 +386,38 @@
 
     // Initialize on load and set up paste handler for bulk import
     document.addEventListener('DOMContentLoaded', function () {
-      // Load existing data and person list
+      // Load existing data and user list
       loadLog();
-      loadPersons();
+      loadUsers();
 
-      // Set up change handler for person dropdown to show/hide new person input
-      const personSelect = document.getElementById('person');
-      const newPersonContainer = document.getElementById('newPersonContainer');
-      const newPersonInput = document.getElementById('newPerson');
-      if (personSelect) {
-        personSelect.addEventListener('change', function () {
-          if (this.value === '__other__') {
-            newPersonContainer.style.display = '';
-            newPersonInput.required = true;
+      // Set up user management UI
+      const showAddUserBtn = document.getElementById('showAddUserBtn');
+      const addUserSection = document.getElementById('addUserSection');
+      const addUserBtn = document.getElementById('addUserBtn');
+      const newUserInput = document.getElementById('newUser');
+
+      if (showAddUserBtn) {
+        showAddUserBtn.addEventListener('click', function () {
+          // Toggle visibility of the add user section when button is clicked
+          if (addUserSection.style.display === 'none' || addUserSection.style.display === '') {
+            addUserSection.style.display = '';
+            if (newUserInput) newUserInput.focus();
           } else {
-            newPersonContainer.style.display = 'none';
-            newPersonInput.required = false;
+            addUserSection.style.display = 'none';
+          }
+        });
+      }
+      if (addUserBtn) {
+        addUserBtn.addEventListener('click', function () {
+          const val = newUserInput ? newUserInput.value.trim() : '';
+          if (val) {
+            if (!users.includes(val)) {
+              users.push(val);
+              saveUsers();
+            }
+            if (newUserInput) newUserInput.value = '';
+            if (addUserSection) addUserSection.style.display = 'none';
+            renderUserOptions();
           }
         });
       }
