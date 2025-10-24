@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Communication Tracker WebApp</title>
+  <title>Daily Mail</title>
   <style>
     /* Base styles */
     body {
       font-family: Arial, sans-serif;
-      background-color: #f7f7f7;
+      background-color: #f5f5f5; /* light grey background for entire page */
       color: #333;
       margin: 0;
       padding: 20px;
@@ -20,12 +20,12 @@
       margin: 0 auto;
       background-color: #ffffff;
       padding: 20px 24px;
-      border: 1px solid #e5e5e5;
+      border: 1px solid #dcdcdc;
       border-radius: 6px;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     }
     h1 {
-      color: #2f5496;
+      color: #333;
       margin-top: 0;
       margin-bottom: 10px;
       font-size: 1.6em;
@@ -73,37 +73,59 @@
       margin-top: 10px;
     }
     button {
-      padding: 8px 16px;
+      padding: 6px 14px;
       border: none;
       border-radius: 4px;
-      background-color: #2f5496;
-      color: #fff;
+      background-color: #555555; /* dark grey button */
+      color: #ffffff;
       cursor: pointer;
-      font-size: 0.9em;
+      font-size: 0.85em;
     }
     button:hover {
-      background-color: #24406e;
+      background-color: #333333;
     }
     /* Post list styles replacing table */
     .post-list {
       margin-top: 20px;
     }
     .post {
-      border: 1px solid #e5e5e5;
-      border-radius: 6px;
-      padding: 12px;
+      border: 1px solid #dddddd;
+      border-radius: 4px;
+      padding: 10px 12px;
       margin-bottom: 12px;
-      background-color: #fff;
+      background-color: #ffffff;
     }
     .post-header {
       display: flex;
       justify-content: space-between;
+      align-items: center;
       font-size: 0.9em;
       color: #555;
       margin-bottom: 4px;
+      gap: 8px;
+    }
+    .post-header .left-info {
+      font-weight: 500;
+    }
+    .post-header .right-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
     .post-header .meta {
       color: #888;
+      font-size: 0.8em;
+    }
+    .post-header button {
+      background: none;
+      border: none;
+      color: #555;
+      font-size: 0.8em;
+      cursor: pointer;
+      padding: 0 4px;
+    }
+    .post-header button:hover {
+      text-decoration: underline;
     }
     .post-body {
       margin-bottom: 8px;
@@ -150,7 +172,7 @@
 </head>
   <body>
   <div class="container">
-  <h1>Communication Tracker</h1>
+  <h1>Daily Mail</h1>
   <p>
     This lightweight web app allows you to maintain a structured log of your
     communication updates. Use the form below to add new entries. Your data is
@@ -207,6 +229,11 @@
   <script>
     // Initialize or load existing log from localStorage
     let commLog = [];
+
+    // Track collapsed state of each entry's replies. Keys are entry ids and
+    // values are booleans (true = collapsed). This is not persisted to local
+    // storage; it only controls the UI during this session.
+    const collapsedState = {};
 
     // Manage list of users for the user dropdown
     let users = [];
@@ -323,26 +350,43 @@
       }
       const headerDiv = document.createElement('div');
       headerDiv.className = 'post-header';
-      const leftSpan = document.createElement('span');
-      leftSpan.textContent = `${entry.person} - ${entry.category}`;
-      const rightSpan = document.createElement('span');
-      rightSpan.className = 'meta';
-      rightSpan.textContent = entry.date;
-      headerDiv.appendChild(leftSpan);
-      headerDiv.appendChild(rightSpan);
+      // Left side: user and category
+      const leftInfo = document.createElement('div');
+      leftInfo.className = 'left-info';
+      leftInfo.textContent = `${entry.person} - ${entry.category}`;
+      // Right side: meta (date) and action buttons
+      const rightActions = document.createElement('div');
+      rightActions.className = 'right-actions';
+      // Date meta
+      const metaSpan = document.createElement('span');
+      metaSpan.className = 'meta';
+      metaSpan.textContent = entry.date;
+      rightActions.appendChild(metaSpan);
+      // If this entry has children, add a collapse toggle
+      let toggleBtn = null;
+      if (entry.responses && entry.responses.length > 0) {
+        toggleBtn = document.createElement('button');
+        toggleBtn.setAttribute('data-action', 'toggle-children');
+        toggleBtn.setAttribute('data-id', entry.id);
+        const isCollapsed = collapsedState[entry.id];
+        const count = entry.responses.length;
+        toggleBtn.textContent = isCollapsed ? `Show replies (${count})` : `Hide replies (${count})`;
+        rightActions.appendChild(toggleBtn);
+      }
+      // Reply button
+      const replyBtn = document.createElement('button');
+      replyBtn.setAttribute('data-action', 'reply');
+      replyBtn.setAttribute('data-id', entry.id);
+      replyBtn.textContent = 'Reply';
+      rightActions.appendChild(replyBtn);
+      headerDiv.appendChild(leftInfo);
+      headerDiv.appendChild(rightActions);
       postDiv.appendChild(headerDiv);
       const bodyDiv = document.createElement('div');
       bodyDiv.className = 'post-body';
       bodyDiv.innerHTML = entry.description;
       postDiv.appendChild(bodyDiv);
-      const actionsDiv = document.createElement('div');
-      actionsDiv.className = 'post-actions';
-      const replyBtn = document.createElement('button');
-      replyBtn.setAttribute('data-action', 'reply');
-      replyBtn.setAttribute('data-id', entry.id);
-      replyBtn.textContent = 'Reply';
-      actionsDiv.appendChild(replyBtn);
-      postDiv.appendChild(actionsDiv);
+      // Reply form for this entry (hidden by default)
       const replyForm = document.createElement('div');
       replyForm.className = 'reply-form';
       replyForm.style.display = 'none';
@@ -350,12 +394,6 @@
       const replyInput = document.createElement('div');
       replyInput.setAttribute('contenteditable', 'true');
       replyInput.className = 'reply-input';
-      replyInput.style.border = '1px solid #ddd';
-      replyInput.style.borderRadius = '4px';
-      replyInput.style.padding = '6px';
-      replyInput.style.minHeight = '40px';
-      replyInput.style.backgroundColor = '#fff';
-      replyInput.style.color = '#333';
       replyForm.appendChild(replyInput);
       const saveBtn = document.createElement('button');
       saveBtn.setAttribute('data-action', 'save-reply');
@@ -369,9 +407,13 @@
       replyForm.appendChild(cancelBtn);
       postDiv.appendChild(replyForm);
       container.appendChild(postDiv);
-      entry.responses.forEach(child => {
-        renderPost(child, level + 1, container);
-      });
+      // Recursively render children unless collapsed
+      const isCollapsedChildren = collapsedState[entry.id];
+      if (!isCollapsedChildren) {
+        entry.responses.forEach(child => {
+          renderPost(child, level + 1, container);
+        });
+      }
     }
 
 
@@ -499,8 +541,9 @@
         });
       }
 
-      // Set up reply handling on the post list. Use event delegation to handle
-      // Reply, Save and Cancel actions for both entries and nested responses.
+      // Set up reply and collapse handling on the post list. Use event
+      // delegation to handle Reply, Save, Cancel and toggle actions for
+      // both entries and nested responses.
       const postListEl = document.getElementById('logList');
       if (postListEl) {
         postListEl.addEventListener('click', function (event) {
@@ -553,6 +596,11 @@
             replyForm.style.display = 'none';
             const input = replyForm.querySelector('.reply-input');
             if (input) input.innerHTML = '';
+          } else if (action === 'toggle-children') {
+            const id = event.target.dataset.id;
+            // Toggle collapsed state for this entry's children
+            collapsedState[id] = !collapsedState[id];
+            renderPosts();
           }
         });
       }
