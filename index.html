@@ -116,7 +116,13 @@
     </div>
     <div>
       <label for="person">Person</label>
-      <input type="text" id="person" placeholder="e.g., JY" required />
+      <!-- Dropdown for selecting a person -->
+      <select id="person" required></select>
+    </div>
+    <!-- Container for adding a new person; hidden unless user selects "Add new person…" -->
+    <div id="newPersonContainer" style="display: none;">
+      <label for="newPerson">New Person</label>
+      <input type="text" id="newPerson" placeholder="Enter new person's name" />
     </div>
     <div>
       <label for="category">Category</label>
@@ -178,6 +184,50 @@
   <script>
     // Initialize or load existing log from localStorage
     let commLog = [];
+
+    // Manage list of people for the person dropdown
+    let persons = [];
+    function loadPersons() {
+      const data = localStorage.getItem('persons');
+      if (data) {
+        try {
+          persons = JSON.parse(data);
+        } catch (e) {
+          persons = [];
+        }
+      }
+      // If no persons stored or list is empty, use default names
+      if (!Array.isArray(persons) || persons.length === 0) {
+        persons = ['LG', 'MJ', 'TW', 'JY'];
+      }
+      renderPersonOptions();
+    }
+    function savePersons() {
+      localStorage.setItem('persons', JSON.stringify(persons));
+    }
+    function renderPersonOptions() {
+      const select = document.getElementById('person');
+      if (!select) return;
+      const current = select.value;
+      select.innerHTML = '';
+      persons.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p;
+        opt.textContent = p;
+        select.appendChild(opt);
+      });
+      // Add option to allow user to add a new person
+      const otherOpt = document.createElement('option');
+      otherOpt.value = '__other__';
+      otherOpt.textContent = 'Add new person…';
+      select.appendChild(otherOpt);
+      // Restore selection if it still exists in the list
+      if (current && persons.includes(current)) {
+        select.value = current;
+      } else {
+        select.value = '';
+      }
+    }
 
     function loadLog() {
       const data = localStorage.getItem('comm_log');
@@ -268,9 +318,22 @@
 
     document.getElementById('entryForm').addEventListener('submit', function (e) {
       e.preventDefault();
+      // Determine the person: existing from dropdown or newly entered
+      const personSelect = document.getElementById('person');
+      let personVal = personSelect.value;
+      if (personVal === '__other__') {
+        personVal = document.getElementById('newPerson').value.trim();
+        // If a new name was entered, add it to the list and persist
+        if (personVal) {
+          if (!persons.includes(personVal)) {
+            persons.push(personVal);
+            savePersons();
+          }
+        }
+      }
       const entry = {
         date: document.getElementById('date').value,
-        person: document.getElementById('person').value.trim(),
+        person: personVal,
         category: document.getElementById('category').value,
         reference: document.getElementById('reference').value.trim(),
         description: document.getElementById('description').value.trim(),
@@ -280,6 +343,13 @@
       saveLog();
       renderTable();
       this.reset();
+      // Hide new person input and reset its required attribute
+      const newPersonContainer = document.getElementById('newPersonContainer');
+      const newPersonInput = document.getElementById('newPerson');
+      if (newPersonContainer) newPersonContainer.style.display = 'none';
+      if (newPersonInput) newPersonInput.required = false;
+      // Re-render person options in case a new one was added
+      renderPersonOptions();
     });
 
     // Export log as JSON file
@@ -327,8 +397,26 @@
 
     // Initialize on load and set up paste handler for bulk import
     document.addEventListener('DOMContentLoaded', function () {
-      // Load existing data
+      // Load existing data and person list
       loadLog();
+      loadPersons();
+
+      // Set up change handler for person dropdown to show/hide new person input
+      const personSelect = document.getElementById('person');
+      const newPersonContainer = document.getElementById('newPersonContainer');
+      const newPersonInput = document.getElementById('newPerson');
+      if (personSelect) {
+        personSelect.addEventListener('change', function () {
+          if (this.value === '__other__') {
+            newPersonContainer.style.display = '';
+            newPersonInput.required = true;
+          } else {
+            newPersonContainer.style.display = 'none';
+            newPersonInput.required = false;
+          }
+        });
+      }
+
       // Set up paste handler for bulk import if pasteArea exists
       const pasteArea = document.getElementById('pasteArea');
       if (pasteArea) {
