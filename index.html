@@ -5,105 +5,134 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Communication Tracker WebApp</title>
   <style>
+    /* Base styles */
     body {
       font-family: Arial, sans-serif;
-      margin: 40px;
+      background-color: #f7f7f7;
+      color: #333;
+      margin: 0;
+      padding: 20px;
       line-height: 1.5;
+    }
+    /* Container to center content and add subtle shadow */
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      padding: 20px 24px;
+      border: 1px solid #e5e5e5;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     }
     h1 {
       color: #2f5496;
+      margin-top: 0;
+      margin-bottom: 10px;
+      font-size: 1.6em;
     }
+    /* Form layout */
     form {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      display: flex;
+      flex-wrap: wrap;
       gap: 12px;
       margin-bottom: 20px;
     }
+    form > div {
+      flex: 1 1 240px;
+      display: flex;
+      flex-direction: column;
+    }
     label {
-      font-weight: bold;
+      font-weight: 500;
+      margin-bottom: 4px;
     }
-    input, select, textarea {
+    input, select {
       width: 100%;
-      padding: 6px;
+      padding: 8px 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
       box-sizing: border-box;
+      background-color: #fff;
+      color: #333;
     }
-    textarea {
-      resize: vertical;
-      height: 60px;
-    }
-
     /* Style for contenteditable description input */
     .description-input {
-      border: 1px solid #ccc;
-      padding: 6px;
-      min-height: 60px;
+      border: 1px solid #ddd;
+      padding: 8px 10px;
+      min-height: 80px;
       width: 100%;
+      border-radius: 4px;
       box-sizing: border-box;
+      background-color: #fff;
       overflow-y: auto;
       white-space: pre-wrap;
+      color: #333;
     }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-    }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 8px;
-      text-align: left;
-      vertical-align: top;
-    }
-    th {
-      background-color: #d9e1f2;
-    }
-    tr:nth-child(even) {
-      /* Stripe table rows for better readability */
-      background-color: #f7f7f7;
-    }
-    /* Styling for the interactive grouped UI */
-    .latest-row {
-      background-color: #eaf2fb;
-      cursor: pointer;
-    }
-    .details-row {
-      background-color: #f7f9fc;
-    }
-    .toggle-icon {
-      cursor: pointer;
-      margin-right: 6px;
-    }
-    .nested-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 8px;
-    }
-    .nested-table th, .nested-table td {
-      border: 1px solid #ddd;
-      padding: 6px;
-      text-align: left;
-    }
-    .nested-table th {
-      background-color: #f0f5ff;
-    }
+    /* Buttons */
     .button-row {
       margin-top: 10px;
     }
     button {
-      padding: 8px 14px;
-      margin-right: 10px;
+      padding: 8px 16px;
       border: none;
-      background-color: #2f5496;
-      color: white;
       border-radius: 4px;
+      background-color: #2f5496;
+      color: #fff;
       cursor: pointer;
+      font-size: 0.9em;
     }
     button:hover {
-      background-color: #274778;
+      background-color: #24406e;
     }
-
+    /* Table styles */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      font-size: 0.9em;
+    }
+    th {
+      background-color: #f5f5f5;
+      padding: 10px 8px;
+      text-align: left;
+      font-weight: 600;
+      border-bottom: 1px solid #e5e5e5;
+      color: #555;
+    }
+    td {
+      padding: 8px;
+      vertical-align: top;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    /* Nested reply indentation */
+    td:first-child {
+      /* default indentation handled inline via JS */
+    }
+    /* Hide striped backgrounds for a cleaner look */
+    tr:nth-child(even) {
+      background-color: transparent;
+    }
+    /* Reply form styling */
+    .reply-input {
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 6px;
+      min-height: 40px;
+      background-color: #fff;
+      color: #333;
+    }
+    /* User management section spacing */
+    #addUserSection {
+      margin-top: 10px;
+    }
+    /* Buttons within user management section */
+    #addUserBtn, #showAddUserBtn {
+      margin-top: 8px;
+    }
   </style>
 </head>
-<body>
+  <body>
+  <div class="container">
   <h1>Communication Tracker</h1>
   <p>
     This lightweight web app allows you to maintain a structured log of your
@@ -160,11 +189,12 @@
   <h2>User Management</h2>
   <p>Use this section to add new user initials to the list without creating an entry.</p>
   <button type="button" id="showAddUserBtn">Add New User</button>
-  <div id="addUserSection" style="display: none; margin-top: 10px;">
+  <div id="addUserSection" style="display: none;">
     <label for="newUser">User Initials</label>
     <input type="text" id="newUser" placeholder="e.g., LG" />
     <button type="button" id="addUserBtn">Add</button>
   </div>
+  </div> <!-- end container -->
 
   <script>
     // Initialize or load existing log from localStorage
