@@ -337,6 +337,11 @@
       saveLog();
       renderTable();
       this.reset();
+      // After resetting the form, set the date field to today again
+      const dateAfterReset = document.getElementById('date');
+      if (dateAfterReset) {
+        dateAfterReset.value = new Date().toISOString().split('T')[0];
+      }
       // Re-render user options in case a new user was added elsewhere
       renderUserOptions();
     });
@@ -389,6 +394,13 @@
       // Load existing data and user list
       loadLog();
       loadUsers();
+
+      // Automatically set the date field to today's date on page load
+      const dateInput = document.getElementById('date');
+      if (dateInput) {
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.value = today;
+      }
 
       // Set up user management UI
       const showAddUserBtn = document.getElementById('showAddUserBtn');
