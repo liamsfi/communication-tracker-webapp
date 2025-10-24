@@ -89,6 +89,15 @@
     button:hover {
       background-color: #274778;
     }
+
+    /* Style for the paste area used for bulk Excel import */
+    .paste-area {
+      border: 2px dashed #a6b8d0;
+      padding: 10px;
+      min-height: 60px;
+      margin-top: 10px;
+      background-color: #f9fbff;
+    }
   </style>
 </head>
 <body>
@@ -141,6 +150,16 @@
       <input type="file" id="fileInput" accept="application/json" style="display: none;" />
     </div>
   </form>
+
+  <!-- Bulk import section -->
+  <h2>Bulk Import from Excel</h2>
+  <p>
+    Copy rows from your Excel spreadsheet containing columns in the order: Date, Person, Category,
+    Reference/Item, Description/Update, Next Steps/Action. Then click inside the area below and
+    paste your table (Ctrl+V or Command+V). The table will appear with its formatting, and the
+    data will be added to the log automatically. Header rows (with column names) are skipped.
+  </p>
+  <div id="pasteArea" class="paste-area" contenteditable="true"></div>
 
   <table id="logTable">
     <thead>
@@ -306,8 +325,58 @@
       reader.readAsText(file);
     });
 
-    // Initialize on load
-    document.addEventListener('DOMContentLoaded', loadLog);
+    // Initialize on load and set up paste handler for bulk import
+    document.addEventListener('DOMContentLoaded', function () {
+      // Load existing data
+      loadLog();
+      // Set up paste handler for bulk import if pasteArea exists
+      const pasteArea = document.getElementById('pasteArea');
+      if (pasteArea) {
+        pasteArea.addEventListener('paste', function (e) {
+          e.preventDefault();
+          // Try to get HTML and plain text from clipboard
+          const clipboardData = e.clipboardData || window.clipboardData;
+          const htmlData = clipboardData.getData('text/html') || '';
+          const textData = clipboardData.getData('text/plain') || '';
+          // Display the pasted content in the area, preserving table formatting if HTML is available
+          if (htmlData) {
+            pasteArea.innerHTML = htmlData;
+          } else {
+            pasteArea.textContent = textData;
+          }
+          // Parse the plain text (tab-separated) into log entries
+          if (textData) {
+            const rows = textData.trim().split(/\r?\n/);
+            let startIdx = 0;
+            if (rows.length) {
+              const firstCols = rows[0].split(/\t/).map(col => col.trim().toLowerCase());
+              // If the first row appears to be a header (starts with "date"), skip it
+              if (firstCols[0] === 'date') {
+                startIdx = 1;
+              }
+            }
+            for (let i = startIdx; i < rows.length; i++) {
+              const cols = rows[i].split(/\t/);
+              // Only create an entry if at least six non-empty values exist
+              if (cols.filter(val => val.trim() !== '').length >= 6) {
+                const [date, person, category, reference, description, nextSteps] = cols;
+                const entry = {
+                  date: (date || '').trim(),
+                  person: (person || '').trim(),
+                  category: (category || '').trim(),
+                  reference: (reference || '').trim(),
+                  description: (description || '').trim(),
+                  nextSteps: (nextSteps || '').trim(),
+                };
+                commLog.push(entry);
+              }
+            }
+            saveLog();
+            renderTable();
+          }
+        });
+      }
+    });
   </script>
 </body>
 </html>
