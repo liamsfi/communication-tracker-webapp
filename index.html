@@ -110,10 +110,8 @@
   </p>
 
   <form id="entryForm">
-    <div>
-      <label for="date">Date</label>
-      <input type="date" id="date" required />
-    </div>
+    <!-- Hidden date field populated automatically -->
+    <input type="hidden" id="date" />
     <div>
       <label for="user">User</label>
       <!-- Dropdown for selecting a user -->
@@ -133,16 +131,8 @@
       </select>
     </div>
     <div>
-      <label for="reference">Reference/Item</label>
-      <input type="text" id="reference" placeholder="e.g., SP25051301_C" required />
-    </div>
-    <div>
       <label for="description">Description / Update</label>
       <textarea id="description" required></textarea>
-    </div>
-    <div>
-      <label for="nextSteps">Next Steps / Action</label>
-      <textarea id="nextSteps" required></textarea>
     </div>
     <div class="button-row">
       <button type="submit">Add Entry</button>
@@ -156,7 +146,7 @@
   <h2>Bulk Import from Excel</h2>
   <p>
     Copy rows from your Excel spreadsheet containing columns in the order: Date, User, Category,
-    Reference/Item, Description/Update, Next Steps/Action. Then click inside the area below and
+    Description/Update (additional columns will be ignored). Then click inside the area below and
     paste your table (Ctrl+V or Command+V). The table will appear with its formatting, and the
     data will be added to the log automatically. Header rows (with column names) are skipped.
   </p>
@@ -168,9 +158,7 @@
         <th>Date</th>
         <th>User</th>
         <th>Category</th>
-        <th>Reference/Item</th>
         <th>Description / Update</th>
-        <th>Next Steps / Action</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -282,9 +270,7 @@
           <td><span class="toggle-icon">${previous.length ? '&#9654;' : ''}</span>${latest.date}</td>
           <td>${latest.person}</td>
           <td>${latest.category}</td>
-          <td>${latest.reference}</td>
           <td>${latest.description}</td>
-          <td>${latest.nextSteps}</td>
         `;
         tbody.appendChild(trLatest);
         // If there are older updates, create a hidden row to display them
@@ -293,10 +279,10 @@
           trDetail.classList.add('details-row');
           trDetail.style.display = 'none';
           const td = document.createElement('td');
-          td.colSpan = 6;
-          let nestedHtml = '<table class="nested-table"><thead><tr><th>Date</th><th>User</th><th>Category</th><th>Reference/Item</th><th>Description / Update</th><th>Next Steps / Action</th></tr></thead><tbody>';
+          td.colSpan = 4;
+          let nestedHtml = '<table class="nested-table"><thead><tr><th>Date</th><th>User</th><th>Category</th><th>Description / Update</th></tr></thead><tbody>';
           previous.forEach(ent => {
-            nestedHtml += `<tr><td>${ent.date}</td><td>${ent.person}</td><td>${ent.category}</td><td>${ent.reference}</td><td>${ent.description}</td><td>${ent.nextSteps}</td></tr>`;
+            nestedHtml += `<tr><td>${ent.date}</td><td>${ent.person}</td><td>${ent.category}</td><td>${ent.description}</td></tr>`;
           });
           nestedHtml += '</tbody></table>';
           td.innerHTML = nestedHtml;
@@ -326,12 +312,15 @@
       const userSelect = document.getElementById('user');
       let userVal = userSelect.value;
       const entry = {
+        // Use the hidden date input which is auto-populated on load and after reset
         date: document.getElementById('date').value,
         person: userVal,
         category: document.getElementById('category').value,
-        reference: document.getElementById('reference').value.trim(),
+        // Generate a unique reference ID for grouping; not shown to the user
+        reference: Date.now().toString(),
         description: document.getElementById('description').value.trim(),
-        nextSteps: document.getElementById('nextSteps').value.trim(),
+        // Next steps field removed; store as empty string for backwards compatibility
+        nextSteps: '',
       };
       commLog.push(entry);
       saveLog();
@@ -462,16 +451,17 @@
             }
             for (let i = startIdx; i < rows.length; i++) {
               const cols = rows[i].split(/\t/);
-              // Only create an entry if at least six non-empty values exist
-              if (cols.filter(val => val.trim() !== '').length >= 6) {
-                const [date, person, category, reference, description, nextSteps] = cols;
+              // Only create an entry if at least four non-empty values exist
+              if (cols.filter(val => val.trim() !== '').length >= 4) {
+                const [date, person, category, description] = cols;
                 const entry = {
                   date: (date || '').trim(),
                   person: (person || '').trim(),
                   category: (category || '').trim(),
-                  reference: (reference || '').trim(),
+                  // Generate a unique reference ID to prevent grouping
+                  reference: Date.now().toString() + Math.random().toString().substr(2),
                   description: (description || '').trim(),
-                  nextSteps: (nextSteps || '').trim(),
+                  nextSteps: '',
                 };
                 commLog.push(entry);
               }
