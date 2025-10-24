@@ -31,6 +31,17 @@
       resize: vertical;
       height: 60px;
     }
+
+    /* Style for contenteditable description input */
+    .description-input {
+      border: 1px solid #ccc;
+      padding: 6px;
+      min-height: 60px;
+      width: 100%;
+      box-sizing: border-box;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -90,14 +101,6 @@
       background-color: #274778;
     }
 
-    /* Style for the paste area used for bulk Excel import */
-    .paste-area {
-      border: 2px dashed #a6b8d0;
-      padding: 10px;
-      min-height: 60px;
-      margin-top: 10px;
-      background-color: #f9fbff;
-    }
   </style>
 </head>
 <body>
@@ -132,7 +135,8 @@
     </div>
     <div>
       <label for="description">Description / Update</label>
-      <textarea id="description" required></textarea>
+      <!-- Use a contenteditable div so users can paste tables and keep formatting -->
+      <div id="description" class="description-input" contenteditable="true"></div>
     </div>
     <div class="button-row">
       <button type="submit">Add Entry</button>
@@ -142,15 +146,6 @@
     </div>
   </form>
 
-  <!-- Bulk import section -->
-  <h2>Bulk Import from Excel</h2>
-  <p>
-    Copy rows from your Excel spreadsheet containing columns in the order: Date, User, Category,
-    Description/Update (additional columns will be ignored). Then click inside the area below and
-    paste your table (Ctrl+V or Command+V). The table will appear with its formatting, and the
-    data will be added to the log automatically. Header rows (with column names) are skipped.
-  </p>
-  <div id="pasteArea" class="paste-area" contenteditable="true"></div>
 
   <table id="logTable">
     <thead>
@@ -311,6 +306,11 @@
       // Determine the selected user from the dropdown
       const userSelect = document.getElementById('user');
       let userVal = userSelect.value;
+      const descDivVal = document.getElementById('description').innerText || document.getElementById('description').textContent;
+      if (!descDivVal.trim()) {
+        alert('Please enter a description/update.');
+        return;
+      }
       const entry = {
         // Use the hidden date input which is auto-populated on load and after reset
         date: document.getElementById('date').value,
@@ -318,7 +318,8 @@
         category: document.getElementById('category').value,
         // Generate a unique reference ID for grouping; not shown to the user
         reference: Date.now().toString(),
-        description: document.getElementById('description').value.trim(),
+        // Capture HTML from the contenteditable description field
+        description: document.getElementById('description').innerHTML.trim(),
         // Next steps field removed; store as empty string for backwards compatibility
         nextSteps: '',
       };
@@ -330,6 +331,11 @@
       const dateAfterReset = document.getElementById('date');
       if (dateAfterReset) {
         dateAfterReset.value = new Date().toISOString().split('T')[0];
+      }
+      // Clear the description contenteditable field
+      const descDiv = document.getElementById('description');
+      if (descDiv) {
+        descDiv.innerHTML = '';
       }
       // Re-render user options in case a new user was added elsewhere
       renderUserOptions();
@@ -423,51 +429,20 @@
         });
       }
 
-      // Set up paste handler for bulk import if pasteArea exists
-      const pasteArea = document.getElementById('pasteArea');
-      if (pasteArea) {
-        pasteArea.addEventListener('paste', function (e) {
+      // Set up paste handler for the description box to preserve formatting when pasting tables
+      const descriptionDiv = document.getElementById('description');
+      if (descriptionDiv) {
+        descriptionDiv.addEventListener('paste', function (e) {
           e.preventDefault();
           // Try to get HTML and plain text from clipboard
           const clipboardData = e.clipboardData || window.clipboardData;
           const htmlData = clipboardData.getData('text/html') || '';
           const textData = clipboardData.getData('text/plain') || '';
-          // Display the pasted content in the area, preserving table formatting if HTML is available
+          // Display the pasted content, preserving table formatting if HTML is available
           if (htmlData) {
-            pasteArea.innerHTML = htmlData;
+            descriptionDiv.innerHTML = htmlData;
           } else {
-            pasteArea.textContent = textData;
-          }
-          // Parse the plain text (tab-separated) into log entries
-          if (textData) {
-            const rows = textData.trim().split(/\r?\n/);
-            let startIdx = 0;
-            if (rows.length) {
-              const firstCols = rows[0].split(/\t/).map(col => col.trim().toLowerCase());
-              // If the first row appears to be a header (starts with "date"), skip it
-              if (firstCols[0] === 'date') {
-                startIdx = 1;
-              }
-            }
-            for (let i = startIdx; i < rows.length; i++) {
-              const cols = rows[i].split(/\t/);
-              // Only create an entry if at least four non-empty values exist
-              if (cols.filter(val => val.trim() !== '').length >= 4) {
-                const [date, person, category, description] = cols;
-                const entry = {
-                  date: (date || '').trim(),
-                  person: (person || '').trim(),
-                  category: (category || '').trim(),
-                  // Generate a unique reference ID to prevent grouping
-                  reference: Date.now().toString() + Math.random().toString().substr(2),
-                  description: (description || '').trim(),
-                  nextSteps: '',
-                };
-                commLog.push(entry);
-              }
-            }
-            saveLog();
-            renderTable();
+            descriptionDiv.textContent = textData;
           }
         });
       }
