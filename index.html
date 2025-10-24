@@ -177,6 +177,23 @@
       background-color: #fff;
       color: #333;
     }
+
+    /* Style any HTML tables pasted into update descriptions to retain
+       a simple grid appearance similar to Excel. This ensures tables
+       remain legible when pasted from spreadsheets. */
+    .post-body table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 4px;
+      font-size: 0.85em;
+    }
+    .post-body th,
+    .post-body td {
+      border: 1px solid #ddd;
+      padding: 4px 6px;
+      text-align: left;
+      vertical-align: top;
+    }
     /* User management section spacing */
     #addUserSection {
       margin-top: 10px;
