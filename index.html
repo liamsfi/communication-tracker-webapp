@@ -190,6 +190,33 @@
       color: #333;
     }
 
+    /* Authentication form styles */
+    .auth-form {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 300px;
+      margin-bottom: 20px;
+    }
+    .auth-form input {
+      height: 40px;
+      padding: 8px 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    .auth-form button {
+      height: 40px;
+      background-color: #555555;
+      color: #ffffff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .auth-form button:hover {
+      background-color: #333333;
+    }
+
     /* Style any HTML tables pasted into update descriptions to retain
        a simple grid appearance similar to Excel. This ensures tables
        remain legible when pasted from spreadsheets. */
@@ -215,61 +242,86 @@
       margin-top: 8px;
     }
   </style>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.11.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.11.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js"></script>
 </head>
   <body>
   <div class="container">
   <h1>Daily Mail</h1>
   <p>
     This lightweight web app allows you to maintain a structured log of your
-    communication updates. Use the form below to add new entries. Your data is
-    saved in your browser's local storage so it persists across sessions on the
-    same computer.
+    communication updates. To access your shared log across devices, please sign in or register. Your data will be saved in a cloud backend instead of the browser.
   </p>
 
-  <form id="entryForm">
-    <!-- Hidden date field populated automatically -->
-    <input type="hidden" id="date" />
-    <div>
-      <label for="user">User</label>
-      <!-- Dropdown for selecting a user -->
-      <select id="user" required></select>
-    </div>
-    <div>
-      <label for="category">Category</label>
-      <select id="category" required>
-        <option value="RFQ">RFQ</option>
-        <option value="Quote">Quote</option>
-        <option value="PO">PO</option>
-        <option value="ETA">ETA</option>
-        <option value="Meeting">Meeting</option>
-        <option value="Claim">Claim</option>
-        <option value="Payment">Payment</option>
-        <option value="Other">Other</option>
-      </select>
-    </div>
-    <div>
-      <label for="description">Description / Update</label>
-      <!-- Use a contenteditable div so users can paste tables and keep formatting -->
-      <div id="description" class="description-input" contenteditable="true"></div>
-    </div>
-    <div class="button-row">
-      <button type="submit">Add Entry</button>
-    </div>
-  </form>
-
-
-  <!-- Container for posts list -->
-  <div id="logList" class="post-list"></div>
-
-  <!-- User management section for adding new users -->
-  <h2>User Management</h2>
-  <p>Use this section to add new user initials to the list without creating an entry.</p>
-  <button type="button" id="showAddUserBtn">Add New User</button>
-  <div id="addUserSection" style="display: none;">
-    <label for="newUser">User Initials</label>
-    <input type="text" id="newUser" placeholder="e.g., LG" />
-    <button type="button" id="addUserBtn">Add</button>
+  <!-- Authentication section -->
+  <div id="authSection">
+    <h2>Sign In</h2>
+    <form id="loginForm" class="auth-form">
+      <label for="loginEmail">Email</label>
+      <input type="email" id="loginEmail" required />
+      <label for="loginPassword">Password</label>
+      <input type="password" id="loginPassword" required />
+      <button type="submit">Log In</button>
+    </form>
+    <h2>Register</h2>
+    <form id="registerForm" class="auth-form">
+      <label for="registerEmail">Email</label>
+      <input type="email" id="registerEmail" required />
+      <label for="registerPassword">Password</label>
+      <input type="password" id="registerPassword" required />
+      <button type="submit">Register</button>
+    </form>
   </div>
+
+  <!-- Main app content shown only when authenticated -->
+  <div id="appContent" style="display: none;">
+    <button type="button" id="signOutBtn" style="float: right; margin-bottom: 10px;">Sign Out</button>
+    <form id="entryForm">
+      <!-- Hidden date field populated automatically -->
+      <input type="hidden" id="date" />
+      <div>
+        <label for="user">User</label>
+        <!-- Dropdown for selecting a user -->
+        <select id="user" required></select>
+      </div>
+      <div>
+        <label for="category">Category</label>
+        <select id="category" required>
+          <option value="RFQ">RFQ</option>
+          <option value="Quote">Quote</option>
+          <option value="PO">PO</option>
+          <option value="ETA">ETA</option>
+          <option value="Meeting">Meeting</option>
+          <option value="Claim">Claim</option>
+          <option value="Payment">Payment</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div>
+        <label for="description">Description / Update</label>
+        <!-- Use a contenteditable div so users can paste tables and keep formatting -->
+        <div id="description" class="description-input" contenteditable="true"></div>
+      </div>
+      <div class="button-row">
+        <button type="submit">Add Entry</button>
+      </div>
+    </form>
+
+    <!-- Container for posts list -->
+    <div id="logList" class="post-list"></div>
+
+    <!-- User management section for adding new users -->
+    <h2>User Management</h2>
+    <p>Use this section to add new user initials to the list without creating an entry.</p>
+    <button type="button" id="showAddUserBtn">Add New User</button>
+    <div id="addUserSection" style="display: none;">
+      <label for="newUser">User Initials</label>
+      <input type="text" id="newUser" placeholder="e.g., LG" />
+      <button type="button" id="addUserBtn">Add</button>
+    </div>
+  </div> <!-- end appContent -->
   </div> <!-- end container -->
 
   <script>
@@ -280,6 +332,23 @@
     // values are booleans (true = collapsed). This is not persisted to local
     // storage; it only controls the UI during this session.
     const collapsedState = {};
+
+    // --- Firebase configuration and initialization ---
+    // Replace the placeholder values below with your project's actual Firebase
+    // configuration. You can find this in your Firebase console under
+    // Project settings > General > Your apps.
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_AUTH_DOMAIN",
+      projectId: "YOUR_PROJECT_ID",
+      // storageBucket, messagingSenderId, appId are optional for this app
+    };
+    // Initialize Firebase app if the SDKs have loaded
+    if (typeof firebase !== 'undefined' && !firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    const auth = typeof firebase !== 'undefined' ? firebase.auth() : null;
+    const db   = typeof firebase !== 'undefined' ? firebase.firestore() : null;
 
     // Manage list of users for the user dropdown
     let users = [];
@@ -324,7 +393,28 @@
       }
     }
 
-    function loadLog() {
+    async function loadLog() {
+      // If using Firebase, load entries from Firestore. Otherwise fall back to localStorage.
+      if (db && auth && auth.currentUser) {
+        commLog = [];
+        try {
+          const snapshot = await db.collection('entries').orderBy('date', 'desc').get();
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            // Firestore stores timestamps as Firebase Timestamp objects. Convert to ISO date string if necessary.
+            if (data.date && data.date.toDate) {
+              data.date = data.date.toDate().toISOString().split('T')[0];
+            }
+            ensureEntryShape(data);
+            commLog.push({ ...data, id: doc.id });
+          });
+        } catch (err) {
+          console.error('Error loading entries from Firestore:', err);
+        }
+        renderPosts();
+        return;
+      }
+      // Local fallback when not authenticated
       const data = localStorage.getItem('comm_log');
       if (data) {
         try {
@@ -336,12 +426,13 @@
       } else {
         commLog = [];
       }
-      // Ensure each entry has an id and responses array for nested replies
       commLog.forEach(entry => ensureEntryShape(entry));
       renderPosts();
     }
 
     function saveLog() {
+      // When authenticated, entries are saved to Firestore individually on create/update.
+      // For offline use or unauthenticated sessions, continue to save to localStorage.
       localStorage.setItem('comm_log', JSON.stringify(commLog));
     }
 
@@ -519,7 +610,7 @@
       return null;
     }
 
-    document.getElementById('entryForm').addEventListener('submit', function (e) {
+    document.getElementById('entryForm').addEventListener('submit', async function (e) {
       e.preventDefault();
       // Determine the selected user from the dropdown
       const userSelect = document.getElementById('user');
@@ -530,40 +621,48 @@
         return;
       }
       const entry = {
-        // Use the hidden date input which is auto-populated on load and after reset
         date: document.getElementById('date').value,
         person: userVal,
         category: document.getElementById('category').value,
-        // Unique identifier for this entry
         id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-        // Capture HTML from the contenteditable description field
         description: document.getElementById('description').innerHTML.trim(),
-        // Array to hold nested responses
         responses: []
       };
-      commLog.push(entry);
-      saveLog();
-      renderPosts();
+      if (db && auth && auth.currentUser) {
+        // Save to Firestore
+        try {
+          await db.collection('entries').add(entry);
+          await loadLog();
+        } catch (err) {
+          console.error('Error adding entry to Firestore:', err);
+          alert('Failed to add entry to backend. It will be stored locally.');
+          commLog.push(entry);
+          saveLog();
+          renderPosts();
+        }
+      } else {
+        // Save locally when not authenticated
+        commLog.push(entry);
+        saveLog();
+        renderPosts();
+      }
+      // Reset form and inputs
       this.reset();
-      // After resetting the form, set the date field to today again
       const dateAfterReset = document.getElementById('date');
       if (dateAfterReset) {
         dateAfterReset.value = new Date().toISOString().split('T')[0];
       }
-      // Clear the description contenteditable field
       const descDiv = document.getElementById('description');
       if (descDiv) {
         descDiv.innerHTML = '';
       }
-      // Re-render user options in case a new user was added elsewhere
       renderUserOptions();
     });
 
 
     // Initialize on load and set up paste handler for bulk import
     document.addEventListener('DOMContentLoaded', function () {
-      // Load existing data and user list
-      loadLog();
+      // Load user list; log entries will be loaded upon authentication
       loadUsers();
 
       // Automatically set the date field to today's date on page load
@@ -665,12 +764,33 @@
               description: content,
               responses: []
             };
-            if (parentEntry) {
-              if (!Array.isArray(parentEntry.responses)) parentEntry.responses = [];
-              parentEntry.responses.push(newResponse);
+            // Save response to Firestore if authenticated; otherwise update local data
+            if (db && auth && auth.currentUser) {
+              (async () => {
+                try {
+                  await db.collection('entries').doc(parentId).update({
+                    responses: firebase.firestore.FieldValue.arrayUnion(newResponse)
+                  });
+                  await loadLog();
+                } catch (err) {
+                  console.error('Error saving response to Firestore:', err);
+                  // Fallback to local update
+                  if (parentEntry) {
+                    if (!Array.isArray(parentEntry.responses)) parentEntry.responses = [];
+                    parentEntry.responses.push(newResponse);
+                  }
+                  saveLog();
+                  renderPosts();
+                }
+              })();
+            } else {
+              if (parentEntry) {
+                if (!Array.isArray(parentEntry.responses)) parentEntry.responses = [];
+                parentEntry.responses.push(newResponse);
+              }
+              saveLog();
+              renderPosts();
             }
-            saveLog();
-            renderPosts();
           } else if (action === 'cancel-reply') {
             const parentId = event.target.dataset.parentId;
             const replyForm = this.querySelector(`.reply-form[data-parent-id='${parentId}']`);
@@ -683,6 +803,56 @@
             // Toggle collapsed state for this entry's children
             collapsedState[id] = !collapsedState[id];
             renderPosts();
+          }
+        });
+      }
+
+      // --- Authentication handlers ---
+      const loginForm = document.getElementById('loginForm');
+      const registerForm = document.getElementById('registerForm');
+      const signOutBtn = document.getElementById('signOutBtn');
+      const authSection = document.getElementById('authSection');
+      const appContent = document.getElementById('appContent');
+
+      if (loginForm && auth) {
+        loginForm.addEventListener('submit', function (e) {
+          e.preventDefault();
+          const email = document.getElementById('loginEmail').value;
+          const password = document.getElementById('loginPassword').value;
+          auth.signInWithEmailAndPassword(email, password)
+            .catch(err => {
+              alert(err.message);
+            });
+        });
+      }
+      if (registerForm && auth) {
+        registerForm.addEventListener('submit', function (e) {
+          e.preventDefault();
+          const email = document.getElementById('registerEmail').value;
+          const password = document.getElementById('registerPassword').value;
+          auth.createUserWithEmailAndPassword(email, password)
+            .catch(err => {
+              alert(err.message);
+            });
+        });
+      }
+      if (signOutBtn && auth) {
+        signOutBtn.addEventListener('click', function () {
+          auth.signOut().catch(err => alert(err.message));
+        });
+      }
+      // Monitor authentication state and toggle UI sections accordingly
+      if (auth) {
+        auth.onAuthStateChanged(function (user) {
+          if (user) {
+            // Hide auth forms and show app content
+            if (authSection) authSection.style.display = 'none';
+            if (appContent) appContent.style.display = '';
+            loadLog();
+          } else {
+            // No user logged in; show auth forms and hide app content
+            if (authSection) authSection.style.display = '';
+            if (appContent) appContent.style.display = 'none';
           }
         });
       }
