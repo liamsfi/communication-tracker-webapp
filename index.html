@@ -456,13 +456,13 @@
     // Configuration for the Daily Mail Firebase project.  These values
     // come from the Firebase console (Project settings > General > Your apps).
     const firebaseConfig = {
-      apiKey: "AIzaSyCvIBy_UBSscYVJjEJIL6i_kKrIhTIqGKo",
+      // These values come from the Firebase console for the daily‑mail‑app project.
+      // See Project settings → General → Your apps → SDK setup and configuration (Config)
+      apiKey: "AIzaSyCvIBY_UBSscYJVjEJIL6i_kKrIhTIqGKo",
       authDomain: "daily-mail-app.firebaseapp.com",
       projectId: "daily-mail-app",
-      // Corrected storage bucket URL (.appspot.com) – required for Firebase to
-      // work properly. The previous value (.firebasestorage.app) caused
-      // authentication issues and prevented login.
-      storageBucket: "daily-mail-app.appspot.com",
+      // Use the firebasestorage domain as shown in the config snippet.
+      storageBucket: "daily-mail-app.firebasestorage.app",
       messagingSenderId: "842505249535",
       appId: "1:842505249535:web:7de48b88c09d15d176a2ca"
     };
