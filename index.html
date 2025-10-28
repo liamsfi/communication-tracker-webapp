@@ -198,6 +198,8 @@
       max-width: 300px;
       margin-bottom: 20px;
     }
+    /* Remove default auth-form input/button rules – we'll override with more
+       polished login/register styling below. */
     .auth-form input {
       height: 40px;
       padding: 8px 10px;
@@ -215,6 +217,94 @@
     }
     .auth-form button:hover {
       background-color: #333333;
+    }
+
+    /* New login/register card styles inspired by modern sign‑in forms. */
+    .auth-container {
+      max-width: 420px;
+      margin: 0 auto;
+      background: #ffffff;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 30px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+    .auth-container h2 {
+      margin-top: 0;
+      margin-bottom: 20px;
+      font-size: 1.4em;
+      text-align: center;
+      color: #333;
+    }
+    .auth-form-v2 {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .auth-group {
+      position: relative;
+    }
+    .auth-group i,
+    .auth-group .icon {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #999999;
+      font-size: 0.9em;
+    }
+    .auth-group input {
+      width: 100%;
+      padding: 10px 10px 10px 34px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+      height: 40px;
+      background-color: #fefefe;
+      color: #333;
+    }
+    .auth-options {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85em;
+      color: #666;
+    }
+    .auth-options label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .auth-options a {
+      color: #007bff;
+      text-decoration: none;
+    }
+    .auth-options a:hover {
+      text-decoration: underline;
+    }
+    .auth-button {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 4px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.95em;
+    }
+    .login-btn {
+      background-color: #3897f0;
+      color: #ffffff;
+    }
+    .login-btn:hover {
+      background-color: #2d7fcc;
+    }
+    .register-btn {
+      background-color: #f5f5f5;
+      color: #333333;
+      border: 1px solid #cccccc;
+    }
+    .register-btn:hover {
+      background-color: #e5e5e5;
     }
 
     /* Style any HTML tables pasted into update descriptions to retain
@@ -242,6 +332,8 @@
       margin-top: 8px;
     }
   </style>
+  <!-- FontAwesome for icons in login/register forms -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-8Rj0ETaQAicT/Hg1yZmkhmp43s3Y4en9vyVfMMDAptVy9dUD3doJzFVJ0rq20J10l3nozs4xh2mMxC4WS/Hdag==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/10.11.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.11.1/firebase-auth.js"></script>
@@ -256,23 +348,47 @@
   </p>
 
   <!-- Authentication section -->
-  <div id="authSection">
-    <h2>Sign In</h2>
-    <form id="loginForm" class="auth-form">
-      <label for="loginEmail">Email</label>
-      <input type="email" id="loginEmail" required />
-      <label for="loginPassword">Password</label>
-      <input type="password" id="loginPassword" required />
-      <button type="submit">Log In</button>
-    </form>
-    <h2>Register</h2>
-    <form id="registerForm" class="auth-form">
-      <label for="registerEmail">Email</label>
-      <input type="email" id="registerEmail" required />
-      <label for="registerPassword">Password</label>
-      <input type="password" id="registerPassword" required />
-      <button type="submit">Register</button>
-    </form>
+  <div id="authSection" class="auth-container">
+    <!-- Login card -->
+    <div id="loginCard" class="auth-card">
+      <h2>Login</h2>
+      <form id="loginForm" class="auth-form-v2">
+        <div class="auth-group">
+          <!-- Unicode envelope icon to avoid external dependencies -->
+          <span class="icon">📧</span>
+          <input type="email" id="loginEmail" placeholder="Email Address" required />
+        </div>
+        <div class="auth-group">
+          <!-- Unicode lock icon -->
+          <span class="icon">🔒</span>
+          <input type="password" id="loginPassword" placeholder="Password" required />
+        </div>
+        <div class="auth-options">
+          <label><input type="checkbox" id="rememberMe" /> Remember Me</label>
+          <a href="#" id="forgotPassword">Forgot Password?</a>
+        </div>
+        <button type="submit" class="auth-button login-btn">Login Now</button>
+        <button type="button" class="auth-button register-btn" id="showRegister">Create Account</button>
+      </form>
+    </div>
+    <!-- Register card -->
+    <div id="registerCard" class="auth-card" style="display: none;">
+      <h2>Create Account</h2>
+      <form id="registerForm" class="auth-form-v2">
+        <div class="auth-group">
+          <!-- Unicode envelope icon to avoid external dependencies -->
+          <span class="icon">📧</span>
+          <input type="email" id="registerEmail" placeholder="Email Address" required />
+        </div>
+        <div class="auth-group">
+          <!-- Unicode lock icon -->
+          <span class="icon">🔒</span>
+          <input type="password" id="registerPassword" placeholder="Password" required />
+        </div>
+        <button type="submit" class="auth-button login-btn">Create Account</button>
+        <button type="button" class="auth-button register-btn" id="showLogin">Back to Login</button>
+      </form>
+    </div>
   </div>
 
   <!-- Main app content shown only when authenticated -->
@@ -343,7 +459,10 @@
       apiKey: "AIzaSyCvIBy_UBSscYVJjEJIL6i_kKrIhTIqGKo",
       authDomain: "daily-mail-app.firebaseapp.com",
       projectId: "daily-mail-app",
-      storageBucket: "daily-mail-app.firebasestorage.app",
+      // Corrected storage bucket URL (.appspot.com) – required for Firebase to
+      // work properly. The previous value (.firebasestorage.app) caused
+      // authentication issues and prevented login.
+      storageBucket: "daily-mail-app.appspot.com",
       messagingSenderId: "842505249535",
       appId: "1:842505249535:web:7de48b88c09d15d176a2ca"
     };
@@ -722,6 +841,28 @@
             descriptionDiv.innerHTML = htmlData;
           } else {
             descriptionDiv.textContent = textData;
+          }
+        });
+      }
+
+      // Toggle between login and register cards. The login card is shown by default.
+      const loginCard   = document.getElementById('loginCard');
+      const registerCard = document.getElementById('registerCard');
+      const showRegisterBtn = document.getElementById('showRegister');
+      const showLoginBtn   = document.getElementById('showLogin');
+      if (showRegisterBtn) {
+        showRegisterBtn.addEventListener('click', function () {
+          if (loginCard && registerCard) {
+            loginCard.style.display = 'none';
+            registerCard.style.display = '';
+          }
+        });
+      }
+      if (showLoginBtn) {
+        showLoginBtn.addEventListener('click', function () {
+          if (loginCard && registerCard) {
+            registerCard.style.display = 'none';
+            loginCard.style.display = '';
           }
         });
       }
